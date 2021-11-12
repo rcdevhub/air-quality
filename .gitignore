@@ -2,6 +2,7 @@
 *.csv
 *.png
 *.jpg
+*.pdf
 
 # Directories
 images/
