@@ -9,5 +9,7 @@ Traffic is the main source of pollution in London and traffic counts are availab
 
 Weather can also affect pollution levels, especially wind and rain, which remove it from the air. Historical UK weather data is available from the <a href="https://roadtraffic.dft.gov.uk/downloads" target="_blank">CEDA</a> archive. One weather station (Heathrow) was chosen to represent London.
 
+Emission levels over time are shown below, along with the main weather patterns. Unfortunately, some emissions data is missing for unknown reasons.
+
 ![Emissions over time](/plots/data_raw.png)
 
