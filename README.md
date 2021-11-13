@@ -1,9 +1,9 @@
 # Air Quality in London
-* Work in Progress
+<p style="color:red">Work in Progress</p>
 
 This repo contains a study of Nitrogen Oxide (NO2) emissions in London.
 
-Emissions data is downloaded from the  <a href="https://www.londonair.org.uk/Londonair/API/" target="_blank">Environmental Research Group API</a>. Polluton levels are monitored at over 200 sites around London. Five sites with sufficient historical data were randomly selected for the study. Emission levels over time are shown below.
+Emissions data was downloaded from the  <a href="https://www.londonair.org.uk/Londonair/API/" target="_blank">Environmental Research Group API</a>, which monitors polluton levels at over 200 sites around London. Five sites with sufficient historical data were randomly selected for the study.
 
 Traffic is the main source of pollution in London and traffic counts are available <a href="https://roadtraffic.dft.gov.uk/downloads" target="_blank">here</a>. However, data is not at the required level of granularity (hourly) to be used in this study.
 
