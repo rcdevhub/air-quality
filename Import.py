@@ -163,6 +163,10 @@ axes[6].set_title('msl_pressure')
 axes[7].set_title('air_temperature')
 for i in range(8):
     axes[i].set_xticks(ticks=[])
+plt.xticks(ticks=range(data.shape[0]),
+           labels=data['MeasurementDateGMT'].dt.strftime('%Y-%b'),
+           fontsize=10)
+plt.locator_params(nbins=11) # Automatically reduces xticks
 plt.tight_layout()
 plt.savefig('plots/data_raw.png',format='png',dpi=300)
 
