@@ -1,5 +1,5 @@
 # Air Quality in London
-<p style="color:red">Work in Progress</p>
+<p style="color:red;">Work in Progress</p>
 
 This repo contains a study of Nitrogen Oxide (NO2) emissions in London.
 
