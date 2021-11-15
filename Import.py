@@ -20,6 +20,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
+from sklearn.impute import SimpleImputer
+
 #--------------------------API functions----------------------------------
 
 def get_sites():
@@ -92,14 +94,15 @@ records['has_data'] = False
 for i in data:
     records.loc[i,'has_data'] = not np.isnan(data[i].iloc[0,1])
 
-# Select possible sites for analysis    
+# Select possible sites for analysis
+# Select all type=='Roadside' as type strongly affects pollution
 sites_with_data = sites[np.array(records['has_data'])]
 sites_candidate = sites[(np.array(records['has_data']))
                         &(sites['@SiteType']=='Roadside')
                         &(pd.to_datetime(sites['@DateOpened'])<datetime(2010,1,1))
                         &(sites['@DateClosed']=='')]
 
-# Select sites at random
+# Select specific sites at random
 selected_sites = sites_candidate.sample(n=5,random_state=100)
 selected_sitecodes = selected_sites['@SiteCode']
 
@@ -120,17 +123,26 @@ for i in range(1,selected_sitecodes.shape[0]):
                         on='MeasurementDateGMT')
 data_nit['MeasurementDateGMT'] = pd.to_datetime(data_nit['MeasurementDateGMT'])
     
+# Weather
+weath1 = get_weather_data()
+
+# Join weather to pollution
+data = pd.merge(data_nit,weath1,
+                left_on='MeasurementDateGMT',
+                right_on='ob_time',
+                how='left')
+data = data.drop('ob_time',axis=1)
+
+#--------------------------Explore data----------------------------------
+
 captions = data_nit.columns[1:]
 
-# Plot to see gaps in data
+# Plot selected sites
 fig, axes = plt.subplots(5,1)
 for i in range(captions.shape[0]):
     axes[i].plot(data_nit[captions[i]])
-    axes[i].title(captions[i])
-plt.xticks(ticks=[*range(data_nit.shape[0])],labels=data_nit['MeasurementDateGMT'].to_list())
-
-# Weather
-weath1 = get_weather_data()
+    axes[i].set_title(captions[i])
+plt.tight_layout()
 
 # Plot weather
 fig, axes = plt.subplots(3,1)
@@ -143,12 +155,6 @@ axes[2].set_title('air_temperature')
 for i in range(3):
     axes[i].set_xticks(ticks=[])
 plt.tight_layout()
-
-# Join weather to pollution
-data = pd.merge(data_nit,weath1,
-                left_on='MeasurementDateGMT',
-                right_on='ob_time',
-                how='left')
 
 # Plot joint
 fig, axes = plt.subplots(8,1,figsize=(20,10))
@@ -171,6 +177,13 @@ plt.tight_layout()
 plt.savefig('plots/data_raw.png',format='png',dpi=300)
 
 # Plot detail
+date_min = datetime(2010,7,1)
+date_max = datetime(2010,7,8)
+date_min_ind = np.argwhere((data['MeasurementDateGMT']==date_min).to_numpy())
+date_max_ind = np.argwhere((data['MeasurementDateGMT']==date_max).to_numpy())
+target_date_mask = ((data['MeasurementDateGMT']>=date_min)
+                    &(data['MeasurementDateGMT']<date_max)).to_numpy()
+
 fig, axes = plt.subplots(8,1,figsize=(20,10))
 for i in range(captions.shape[0]):
     axes[i].plot(data[captions[i]])
@@ -183,12 +196,52 @@ axes[6].set_title('msl_pressure')
 axes[7].set_title('air_temperature')
 for i in range(8):
     axes[i].set_xticks(ticks=[])
-    axes[i].set_xlim([1000,1600])
-plt.xticks(ticks=range(1000,1600),
-           labels=data.loc[range(1000,1600),'MeasurementDateGMT'].dt.strftime('%Y-%b'),
+    axes[i].set_xlim(date_min_ind,date_max_ind)
+plt.xticks(ticks=np.array([*range(0,data.shape[0])])[target_date_mask],
+           labels=data.loc[target_date_mask,
+                           'MeasurementDateGMT'].dt.strftime('%Y-%b-%d'),
            fontsize=10)
 plt.locator_params(nbins=10) # Automatically reduces xticks
 plt.tight_layout()
 plt.savefig('plots/data_detail.png',format='png',dpi=300)
 
-#--------------------------Testing----------------------------------
+# Count missing values
+na_locs = data.isna()
+na_count = na_locs.sum()
+na_pct = na_count/data.shape[0]
+# Dropping every na row results in loss of ~40% of data
+data_nona = data.dropna()
+na_pct_total = 1-data_nona.shape[0]/data.shape[0]
+
+#--------------------------Preprocess data----------------------------------
+
+# Train-test split
+# Choose [2010-2017] as training data, [2018-2019] as test data
+
+data_train = data.loc[data['MeasurementDateGMT']<datetime(2018,1,1)]
+data_test = data.loc[data['MeasurementDateGMT']>=datetime(2018,1,1)]
+
+#--------------------------Baseline models----------------------------------
+
+# Random forest
+
+X_train = 
+
+# Replace missing values with means
+test_vals = data_nit.drop('MeasurementDateGMT',axis=1)
+imp_mean = SimpleImputer(missing_values=np.nan,strategy='mean',
+                         add_indicator=True)
+imp_mean.fit(test_vals)
+
+imputed = imp_mean.transform(test_vals)
+
+test2 = imputed[:1000,:]
+
+# Fit a random forest 
+data_impute = data
+for i in data.columns:
+    if i == 'MeasurementDateGMT':
+        continue
+    data_impute.loc[na_locs[i],i] = means[i]
+
+#--------------------------Feature engineering------------------------------
