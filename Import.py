@@ -29,6 +29,8 @@ from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 from sklearn.metrics import (mean_squared_error, mean_absolute_error,
                              mean_absolute_percentage_error)
 
+import plotly.express as px
+from plotly.offline import plot
 
 #--------------------------API functions----------------------------------
 
@@ -41,6 +43,10 @@ def get_sites():
     response = requests.request("GET",url)
     sites = json.loads(response.text)
     sites_df = pd.DataFrame.from_dict(sites['Sites']['Site'])
+    sites_df['@DateOpened'] = pd.to_datetime(sites_df['@DateOpened'])
+    sites_df['@DateClosed'] = pd.to_datetime(sites_df['@DateClosed'])
+    sites_df['@Latitude'] = pd.to_numeric(sites_df['@Latitude'])
+    sites_df['@Longitude'] = pd.to_numeric(sites_df['@Longitude'])
     
     return sites_df
 
@@ -172,8 +178,8 @@ for i in data:
 sites_with_data = sites[np.array(records['has_data'])]
 sites_candidate = sites[(np.array(records['has_data']))
                         &(sites['@SiteType']=='Roadside')
-                        &(pd.to_datetime(sites['@DateOpened'])<datetime(2010,1,1))
-                        &(sites['@DateClosed']=='')]
+                        &(sites['@DateOpened']<datetime(2010,1,1))
+                        &(sites['@DateClosed'].isnull())]
 
 # Select specific sites at random
 selected_sites = sites_candidate.sample(n=5,random_state=100)
@@ -277,6 +283,19 @@ plt.xticks(ticks=np.array([*range(0,data.shape[0])])[target_date_mask],
 plt.locator_params(nbins=10) # Automatically reduces xticks
 plt.tight_layout()
 plt.savefig('plots/data_detail.png',format='png',dpi=300)
+
+# Plot selected locations on map
+fig = px.scatter_mapbox(selected_sites,
+                        lat='@Latitude',
+                        lon='@Longitude',
+                        hover_name='@SiteName',
+                        size=8*np.ones(selected_sites.shape[0]),
+                        zoom=10,
+                        width=800,
+                        height=800,
+                        title='Site Locations')
+fig.update_layout(mapbox_style='open-street-map')
+plot(fig)
 
 # Count missing values
 na_locs = data.isna()
