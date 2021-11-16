@@ -3,6 +3,7 @@
 *.png
 *.jpg
 *.pdf
+*.html
 
 # Directories
 images/
