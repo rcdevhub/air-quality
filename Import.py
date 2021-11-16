@@ -18,9 +18,17 @@ import requests
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from datetime import datetime
 
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
+from sklearn.metrics import (mean_squared_error, mean_absolute_error,
+                             mean_absolute_percentage_error)
+
 
 #--------------------------API functions----------------------------------
 
@@ -58,7 +66,7 @@ def get_traf_data(sitecode,startdate,enddate):
     
     return traffic
 
-#--------------------------Data import functions----------------------------------
+#--------------------------Data import functions-------------------------
 
 def get_weather_data():
     '''Get weather data from saved files.'''
@@ -79,6 +87,71 @@ def get_weather_data():
     
     return all_data
 
+#--------------------------Modelling functions-------------------------
+
+def compute_reg_metrics(Y_train,pred_train):
+    '''Compute regession metrics for predictions'''
+    metrics = {}
+    metrics['mse'] = mean_squared_error(Y_train,pred_train)
+    metrics['rmse'] = np.sqrt(metrics['mse'])
+    metrics['mae'] = mean_absolute_error(Y_train, pred_train)
+    metrics['mape'] = mean_absolute_percentage_error(Y_train, pred_train)
+    
+    return metrics
+
+#--------------------------Plotting functions-------------------------
+
+def plot_feat_imp(model,names):
+    '''Plot feature importance from rf model.'''
+    feat_imp = pd.Series(model.feature_importances_,
+                         index=names)
+    plt.figure()
+    feat_imp.sort_values(ascending=False).plot.bar()
+    
+    return feat_imp
+
+def plot_resid(residuals):
+    '''Plot regression residuals.'''
+    plt.figure()
+    sns.histplot(residuals)
+    plt.axvline(x=0,linewidth=1,color='black')
+    return None
+
+def plot_pred_vs_act(Y_true,Y_pred,bins,x_low=None,x_high=None,y_low=None,y_high=None):
+    '''Plot regression predicted vs actual density.'''
+    fig, ax = plt.subplots(1,1)
+    plt.hist2d(x=Y_true,y=Y_pred,bins=bins,cmap=plt.cm.jet)
+    plt.plot(Y_true,Y_true,linestyle='-',linewidth=0.03,color='white')
+    plt.colorbar()
+    if (x_low is not None) & (x_high is not None):
+        ax.set_xlim([x_low,x_high])
+    if (y_low is not None) & (y_high is not None):
+        ax.set_ylim([y_low,y_high])
+    plt.title('Predicted vs Actual density')
+    plt.xlabel('Actual')
+    plt.ylabel('Predicted')
+    return None
+
+def plot_pred_time(dates,Y_true,Y_pred,date_low=None,date_high=None):
+    '''Plot predicted and actual time series between two dates.'''
+    fig, ax = plt.subplots(1,1,figsize=(10,5))
+    ax.plot(dates,Y_true,linewidth=0.5,label='Actual')
+    ax.plot(dates,Y_pred,linewidth=0.5,label='Predicted')
+    if (date_low is not None) & (date_high is not None):
+        ax.set_xlim([date_low,date_high])
+    plt.legend()
+    return None
+
+def plot_resid_box(residuals,variable):
+    '''Plot residuals boxplot by variable.'''
+    plt.figure()
+    sns.boxplot(variable,residuals,color='lightcyan')
+    plt.axhline(y=0,color='black',linewidth=1)
+    plt.ylabel('Residual')
+    return None
+
+
+    
 #--------------------------Get data----------------------------------
     
 # Get sitelist
@@ -215,33 +288,94 @@ na_pct_total = 1-data_nona.shape[0]/data.shape[0]
 
 #--------------------------Preprocess data----------------------------------
 
-# Train-test split
-# Choose [2010-2017] as training data, [2018-2019] as test data
+# Arbitrarily select Islington - Holloway Road as target site
+# Remove records where target variable missing (~6%)
+# For clarity in model comparison. Other missing variables imputed (later).
+data_cut = data.loc[data['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].isna()==False]
 
-data_train = data.loc[data['MeasurementDateGMT']<datetime(2018,1,1)]
-data_test = data.loc[data['MeasurementDateGMT']>=datetime(2018,1,1)]
+# Train-test split
+# Choose [2010-2016] as training data, [2017-2018] as validation data,
+# [2019] as test data
+data_train = data_cut.loc[data['MeasurementDateGMT']<datetime(2018,1,1)]
+data_valid = data_cut.loc[(data['MeasurementDateGMT']>=datetime(2018,1,1))
+                          & (data['MeasurementDateGMT']<datetime(2019,1,1))]
+data_test = data_cut.loc[data['MeasurementDateGMT']>=datetime(2019,1,1)]
+
+X_train = data_train.drop(['MeasurementDateGMT',
+                           'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
+                          axis=1).values
+Y_train = data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values
+
+var_names = data_train.drop(['MeasurementDateGMT',
+                             'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
+                            axis=1).columns
+
+X_valid = data_valid.drop(['MeasurementDateGMT',
+                           'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
+                          axis=1).values
+Y_valid = data_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values
+
+# Test TBC
 
 #--------------------------Baseline models----------------------------------
 
-# Random forest
+# Models
+# Random forest, default, ignoring time component
+regressors = {'rf': RandomForestRegressor()}
 
-X_train = 
+hyperparameters = {'rf':{'regressor__n_estimators':[100],
+                         'regressor__max_depth':[*range(1,50,1)],
+                         'regressor__max_features':[*range(1,10,1)],
+                         'regressor__min_samples_split':[2],
+                         'regressor__min_samples_leaf':[1],
+                         'regressor__max_samples':[None]
+                             }}
 
-# Replace missing values with means
-test_vals = data_nit.drop('MeasurementDateGMT',axis=1)
-imp_mean = SimpleImputer(missing_values=np.nan,strategy='mean',
-                         add_indicator=True)
-imp_mean.fit(test_vals)
+# Replace missing values with mean
+imputer = SimpleImputer(missing_values=np.nan,
+                        strategy='mean',
+                        add_indicator=True)
+# Normalise
+scaler = StandardScaler()
+# Time-based cv
+splitter = TimeSeriesSplit(n_splits=5)
 
-imputed = imp_mean.transform(test_vals)
+pipe = Pipeline([('imputer',imputer),
+                 ('scaler',scaler),
+                 ('regressor',regressors['rf'])])
 
-test2 = imputed[:1000,:]
+random_search_iter = 20
+score_metric = 'neg_mean_squared_error'
 
-# Fit a random forest 
-data_impute = data
-for i in data.columns:
-    if i == 'MeasurementDateGMT':
-        continue
-    data_impute.loc[na_locs[i],i] = means[i]
+reg_cv = RandomizedSearchCV(estimator=pipe,
+                            param_distributions=hyperparameters['rf'],
+                            n_iter=random_search_iter,
+                            scoring=score_metric,
+                            cv=splitter,
+                            verbose=3)
+
+reg_cv.fit(X_train,Y_train)
+reg_cv_results = reg_cv.cv_results_
+reg_cv_best = reg_cv.best_estimator_
+# Refit on all training data
+reg_cv_best.fit(X_train,Y_train)
+pred_base_train = reg_cv_best.predict(X_train)
+pred_base_valid = reg_cv_best.predict(X_valid)
+resid_base_train = Y_train - pred_base_train
+resid_base_valid = Y_valid - pred_base_valid
+# Compute metrics
+pred_base_metrics_train = compute_reg_metrics(Y_train,pred_base_train)
+pred_base_metrics_valid = compute_reg_metrics(Y_valid,pred_base_valid)
+
+var_names_imputed = [*var_names, *[i+'_imputed' for i in var_names]]
+# Plot diagnostics
+plot_feat_imp(reg_cv_best.named_steps['regressor'],var_names_imputed)
+plot_resid(resid_base_train)
+plot_pred_vs_act(Y_train, pred_base_train, 200, x_low=0, x_high=100, y_low=0, y_high=100)
+# Plot predictions
+plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_base_train,
+               date_low=datetime(2016,10,1),date_high=datetime(2016,10,31))
+# Plot residuals
+plot_resid_box(resid_base_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 
 #--------------------------Feature engineering------------------------------
