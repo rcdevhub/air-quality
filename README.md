@@ -13,3 +13,6 @@ Emission levels over time are shown below, along with the main weather patterns.
 
 ![Emissions over time](/plots/data_raw.png)
 
+### Selected sites
+
+![Site locations](/plots/site-locations.png)
