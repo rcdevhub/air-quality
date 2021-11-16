@@ -293,7 +293,8 @@ fig = px.scatter_mapbox(selected_sites,
                         zoom=10,
                         width=800,
                         height=800,
-                        title='Site Locations')
+                        title='Site Locations',
+                        color=(selected_sites['@SiteName']=='Islington - Holloway Road'))
 fig.update_layout(mapbox_style='open-street-map')
 plot(fig)
 
