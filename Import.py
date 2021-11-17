@@ -32,6 +32,10 @@ from sklearn.metrics import (mean_squared_error, mean_absolute_error,
 import plotly.express as px
 from plotly.offline import plot
 
+from statsmodels.graphics.tsaplots import (plot_acf, plot_pacf)
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+
 #--------------------------API functions----------------------------------
 
 def get_sites():
@@ -397,5 +401,70 @@ plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_base_train,
                date_low=datetime(2016,10,1),date_high=datetime(2016,10,31))
 # Plot residuals
 plot_resid_box(resid_base_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
+
+#--------------------------Time Series EDA---------------------------
+
+# Plot ACF
+# Note importance of recent readings and daily peaks at 24 and 48 hours
+# Note the confidence interval is there but nearly invisible
+plot_acf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
+# plt.ylim([-0.25,0.25])
+
+# Plot PACF
+# Shows the most recent two hours as critical, and 24, 48 hours as important
+# Again note these are all outside the invisible confidence interval
+# Subsequent peaks indicate that ARIMA model unlikely to be sufficient
+plot_pacf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
+# plt.ylim([-0.1,0.1])
+
+#--------------------------ARIMA------------------------------
+
+# Prepare data for ARIMA model
+tseries_train = data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']
+tseries_train.index = data_train['MeasurementDateGMT']
+
+# Fit AR(2) model (assumes no trend or seasonality)
+ar2 = ARIMA(tseries_train,order=(2,0,0))
+ar2_fit = ar2.fit()
+print(ar2_fit.summary())
+pred_ar2_train = ar2_fit.predict()
+# The model basically predicts using the last value and a bit of info from
+# the previous value. Basically persistence.
+# May also be a small amount of skew from the discontinuities
+# Residuals are less biased than the non-ts baseline above
+pred_ar2_metrics_train = compute_reg_metrics(Y_train,pred_ar2_train.values)
+resid_ar2_train = pd.DataFrame(ar2_fit.resid)
+print(resid_ar2_train.describe())
+resid_ar2_train.plot()
+plot_resid(resid_ar2_train)
+# Note the ACF graph of the residuals has lines way outside the confidence
+# interval, indicating that model is not fully explaining behaviour
+plot_acf(resid_ar2_train)
+plt.ylim([-0.1,0.1])
+plot_pred_vs_act(Y_train, pred_ar2_train.values, 200, x_low=0, x_high=100, y_low=0, y_high=100)
+# Pick a low range to see daily lag
+plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_ar2_train.values,
+               date_low=datetime(2015,6,7),date_high=datetime(2015,6,15))
+plot_resid_box(np.squeeze(resid_ar2_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
+
+#--------------------------SARIMA------------------------------
+
+# AR(2) with 24-hour (daily) seasonality
+# Still largely a persistence model, slightly improved RMSE, residuals now biased though
+sar2_2_24 = SARIMAX(tseries_train,order=(2,0,0),seasonal_order=(2,0,0,24))
+sar2_2_24_fit = sar2_2_24.fit()
+print(sar2_2_24_fit.summary())
+pred_sar2_2_24_train = sar2_2_24_fit.predict()
+pred_sar2_2_24_metrics_train = compute_reg_metrics(Y_train,pred_sar2_2_24_train.values)
+resid_sar2_2_24_train = pd.DataFrame(sar2_2_24_fit.resid)
+print(resid_sar2_2_24_train.describe())
+resid_sar2_2_24_train.plot()
+plot_resid(resid_sar2_2_24_train)
+plot_acf(resid_sar2_2_24_train)
+plt.ylim([-0.1,0.1])
+plot_pred_vs_act(Y_train, pred_sar2_2_24_train.values, 200, x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_sar2_2_24_train.values,
+               date_low=datetime(2012,12,20),date_high=datetime(2012,12,31))
+plot_resid_box(np.squeeze(resid_sar2_2_24_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 
 #--------------------------Feature engineering------------------------------
