@@ -15,6 +15,7 @@ os.chdir('C://Code/Projects/air-quality')
 import io
 import json
 import requests
+import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,6 +36,8 @@ from plotly.offline import plot
 from statsmodels.graphics.tsaplots import (plot_acf, plot_pacf)
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+from pytorch_forecasting.data import TimeSeriesDataSet
 
 #--------------------------API functions----------------------------------
 
@@ -159,13 +162,12 @@ def plot_resid_box(residuals,variable):
     plt.axhline(y=0,color='black',linewidth=1)
     plt.ylabel('Residual')
     return None
-
-
     
 #--------------------------Get data----------------------------------
     
 # Get sitelist
 sites = get_sites()
+sites.to_pickle('data/pollution/sites.pkl')
 
 # Check which sites have NO2 data
 data = {}
@@ -344,7 +346,7 @@ Y_valid = data_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].valu
 #--------------------------Baseline models----------------------------------
 
 # Models
-# Random forest, default, ignoring time component
+# Random forest, ignoring time component
 regressors = {'rf': RandomForestRegressor()}
 
 hyperparameters = {'rf':{'regressor__n_estimators':[100],
@@ -467,4 +469,22 @@ plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_sar2_2_24_train.val
                date_low=datetime(2012,12,20),date_high=datetime(2012,12,31))
 plot_resid_box(np.squeeze(resid_sar2_2_24_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 
+#--------------------------Time Series Data Prep------------------------------
+
+ts2 = data_train[['MeasurementDateGMT','Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']].copy()
+
+ts2.reset_index(inplace=True)
+ts2.rename(columns={'index':'time_idx'},inplace=True)
+ts2['group'] = np.zeros(ts2.shape[0])
+
+tsd = TimeSeriesDataSet(ts2,
+                        time_idx='time_idx',
+                        target='Islington - Holloway Road: Nitrogen Dioxide (ug/m3)',
+                        group_ids=['group'],
+                        allow_missing_timesteps=True
+                        )
+
+
+
 #--------------------------Feature engineering------------------------------
+
