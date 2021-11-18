@@ -162,52 +162,75 @@ def plot_resid_box(residuals,variable):
     plt.axhline(y=0,color='black',linewidth=1)
     plt.ylabel('Residual')
     return None
+
+#--------------------------Time series functions---------------------    
+
+def make_window_data(data,window_length):
+    '''Take time series array and return sliding window and target arrays.'''
+    assert type(data) == np.ndarray, 'Input data must be numpy array.'
+    windows = []
+    targets = []
+    for i in range(0,data.shape[0]-window_length):
+        window = data[i:i+window_length]
+        target = data[i+window_length]
+        windows.append(window)
+        targets.append(target)
     
+    windows = np.array(windows)
+    targets = np.array(targets)
+    
+    return windows, targets
+
 #--------------------------Get data----------------------------------
     
 # Get sitelist
-sites = get_sites()
-sites.to_pickle('data/pollution/sites.pkl')
+# sites = get_sites()
+# sites.to_pickle('data/pollution/sites.pkl')
+sites = pd.read_pickle('data/pollution/sites.pkl')
 
 # Check which sites have NO2 data
-data = {}
-for i in sites['@SiteCode']:
-    data[i] = get_obs_data(i,'NO2','01Jan2020','02Jan2020')
+# data = {}
+# for i in sites['@SiteCode']:
+#     data[i] = get_obs_data(i,'NO2','01Jan2020','02Jan2020')
 
-records = pd.DataFrame(index=sites['@SiteCode'])
-records['has_data'] = False
-for i in data:
-    records.loc[i,'has_data'] = not np.isnan(data[i].iloc[0,1])
+# records = pd.DataFrame(index=sites['@SiteCode'])
+# records['has_data'] = False
+# for i in data:
+#     records.loc[i,'has_data'] = not np.isnan(data[i].iloc[0,1])
 
 # Select possible sites for analysis
 # Select all type=='Roadside' as type strongly affects pollution
-sites_with_data = sites[np.array(records['has_data'])]
-sites_candidate = sites[(np.array(records['has_data']))
-                        &(sites['@SiteType']=='Roadside')
-                        &(sites['@DateOpened']<datetime(2010,1,1))
-                        &(sites['@DateClosed'].isnull())]
+# sites_with_data = sites[np.array(records['has_data'])]
+# sites_candidate = sites[(np.array(records['has_data']))
+#                         &(sites['@SiteType']=='Roadside')
+#                         &(sites['@DateOpened']<datetime(2010,1,1))
+#                         &(sites['@DateClosed'].isnull())]
 
-# Select specific sites at random
-selected_sites = sites_candidate.sample(n=5,random_state=100)
-selected_sitecodes = selected_sites['@SiteCode']
+# # Select specific sites at random
+# For reference: EN5, NM2,GN3, RB4, IS2
+# selected_sites = sites_candidate.sample(n=5,random_state=100)
+# selected_sitecodes = selected_sites['@SiteCode']
 
 # Get full data
-full_data = {}
-for i in selected_sitecodes:
-    full_data[i] = get_obs_data(i,'NO2','01Jan2010','31Dec2019')
+# full_data = {}
+# for i in selected_sitecodes:
+#     full_data[i] = get_obs_data(i,'NO2','01Jan2010','31Dec2019')
 
 # Check all dates are all the same as first set of dates
-for i in full_data:
-    assert np.array_equal(full_data[i]['MeasurementDateGMT'],
-                      full_data[selected_sitecodes.iloc[0]]['MeasurementDateGMT']), "Unequal date range"
+# for i in full_data:
+#     assert np.array_equal(full_data[i]['MeasurementDateGMT'],
+#                       full_data[selected_sitecodes.iloc[0]]['MeasurementDateGMT']), "Unequal date range"
 
 # Join into one frame
-data_nit = full_data[selected_sitecodes.iloc[0]]
-for i in range(1,selected_sitecodes.shape[0]):
-    data_nit = pd.merge(data_nit,full_data[selected_sitecodes.iloc[i]],
-                        on='MeasurementDateGMT')
-data_nit['MeasurementDateGMT'] = pd.to_datetime(data_nit['MeasurementDateGMT'])
-    
+# data_nit = full_data[selected_sitecodes.iloc[0]]
+# for i in range(1,selected_sitecodes.shape[0]):
+#     data_nit = pd.merge(data_nit,full_data[selected_sitecodes.iloc[i]],
+#                         on='MeasurementDateGMT')
+# data_nit['MeasurementDateGMT'] = pd.to_datetime(data_nit['MeasurementDateGMT'])
+
+# data_nit.to_pickle('data/pollution/data_nit.pkl')
+data_nit = pd.read_pickle('data/pollution/data_nit.pkl')
+
 # Weather
 weath1 = get_weather_data()
 
@@ -471,18 +494,35 @@ plot_resid_box(np.squeeze(resid_sar2_2_24_train.values),pd.DatetimeIndex(data_tr
 
 #--------------------------Time Series Data Prep------------------------------
 
-ts2 = data_train[['MeasurementDateGMT','Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']].copy()
+# ts2 = data_train[['MeasurementDateGMT','Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']].copy()
 
-ts2.reset_index(inplace=True)
-ts2.rename(columns={'index':'time_idx'},inplace=True)
-ts2['group'] = np.zeros(ts2.shape[0])
+# ts2.reset_index(inplace=True)
+# ts2.rename(columns={'index':'time_idx'},inplace=True)
+# ts2['group'] = np.zeros(ts2.shape[0])
 
-tsd = TimeSeriesDataSet(ts2,
-                        time_idx='time_idx',
-                        target='Islington - Holloway Road: Nitrogen Dioxide (ug/m3)',
-                        group_ids=['group'],
-                        allow_missing_timesteps=True
-                        )
+# max_encoder_length = 80
+# max_prediction_length = 1
+
+# tsd = TimeSeriesDataSet(ts2,
+#                         time_idx='time_idx',
+#                         target='Islington - Holloway Road: Nitrogen Dioxide (ug/m3)',
+#                         group_ids=['group'],
+#                         allow_missing_timesteps=True,
+#                         max_encoder_length=max_encoder_length,
+#                         max_prediction_length=max_prediction_length
+#                         )
+
+# dataloader = tsd.to_dataloader(batch_size=len(tsd))
+
+window_length = 80
+
+X_ts_train,Y_ts_train = make_window_data(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values,
+                                         window_length)
+
+# Make input multi-dimensional
+
+#--------------------------Regression model------------------------------
+
 
 
 
