@@ -4,6 +4,7 @@
 *.jpg
 *.pdf
 *.html
+*.pkl
 
 # Directories
 images/
