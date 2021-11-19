@@ -26,6 +26,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Ridge, RidgeCV
 from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 from sklearn.metrics import (mean_squared_error, mean_absolute_error,
                              mean_absolute_percentage_error)
@@ -166,7 +167,7 @@ def plot_resid_box(residuals,variable):
 #--------------------------Time series functions---------------------    
 
 def make_window_data(data,window_length):
-    '''Take time series array and return sliding window and target arrays.'''
+    '''Take one time series array and return sliding window and target arrays.'''
     assert type(data) == np.ndarray, 'Input data must be numpy array.'
     windows = []
     targets = []
@@ -181,6 +182,27 @@ def make_window_data(data,window_length):
     
     return windows, targets
 
+def make_multi_window(data,window_length):
+    '''Take multi-time series and return multi-arrays of windows and targets.'''
+    assert type(data) == np.ndarray, 'Input data must be numpy array.'
+    feat_num = data.shape[1]
+    window_num = data.shape[0]-window_length
+    multi = np.zeros((feat_num,window_num,window_length))
+    multi_targ = np.zeros((feat_num,window_num))
+    for i in range(feat_num):
+        multi[i,:,:], multi_targ[i,:] = make_window_data(data[:,i],window_length)
+    return multi, multi_targ
+
+def reshape_multi_window(multi):
+    '''Reshape multi-factorial sliding window array into model training data.'''
+    feat_num = multi.shape[0]
+    window_num = multi.shape[1]
+    window_length = multi.shape[2]
+    training = np.zeros((window_num,feat_num*window_length))
+    for i in range(feat_num):
+        training[:,i*window_length:i*window_length+window_length] = multi[i,:,:]
+    return training
+    
 #--------------------------Get data----------------------------------
     
 # Get sitelist
@@ -366,7 +388,7 @@ Y_valid = data_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].valu
 
 # Test TBC
 
-#--------------------------Baseline models----------------------------------
+#--------------------------Baseline model----------------------------------
 
 # Models
 # Random forest, ignoring time component
@@ -514,17 +536,108 @@ plot_resid_box(np.squeeze(resid_sar2_2_24_train.values),pd.DatetimeIndex(data_tr
 
 # dataloader = tsd.to_dataloader(batch_size=len(tsd))
 
+# Prepare sliding window data from training features
+
 window_length = 80
 
-X_ts_train,Y_ts_train = make_window_data(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values,
+mult,_ = make_multi_window(X_train,window_length)
+X_ts_train = reshape_multi_window(mult)
+# Target is not used in training data
+_,Y_ts_train = make_window_data(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values,
                                          window_length)
 
-# Make input multi-dimensional
+#--------------------------Regression TS model------------------------------
 
-#--------------------------Regression model------------------------------
+regressors = {'rdg': RidgeCV()}
 
+imputer = SimpleImputer(missing_values=np.nan,
+                        strategy='mean',
+                        add_indicator=True)
 
+scaler = StandardScaler()
 
+pipe = Pipeline([('imputer',imputer),
+                 ('scaler',scaler),
+                 ('regressor',regressors['rdg'])])
+
+pipe.fit(X_ts_train,Y_ts_train)
+
+rdg_coef = pipe['regressor'].coef_
+rdg_alpha = pipe['regressor'].alpha_
+
+pred_rdg_train = pipe.predict(X_ts_train)
+resid_rdg_train = Y_ts_train - pred_rdg_train
+
+# Compute metrics
+pred_rdg_metrics_train = compute_reg_metrics(Y_ts_train,pred_rdg_train)
+print(pd.DataFrame(resid_rdg_train).describe())
+# Plots
+plot_resid(resid_rdg_train)
+plot_pred_vs_act(Y_ts_train, pred_rdg_train, bins=200,
+                 x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_time(data_train['MeasurementDateGMT'][window_length:],Y_ts_train,pred_rdg_train,
+               date_low=datetime(2013,11,1),date_high=datetime(2013,11,20))
+plot_resid_box(resid_rdg_train,
+               pd.DatetimeIndex(data_train['MeasurementDateGMT'][window_length:]).year)
+
+#--------------------------Random forest TS model------------------------------
+
+regressors = {'rf_ts': RandomForestRegressor()}
+
+hyperparameters = {'rf_ts': {'regressor__n_estimators': [*range(50,150,1)],
+                             'regressor__max_depth': [*range(50,100,1)],
+                             'regressor__max_features':[*range(40,80,1)],
+                             'regressor__min_samples_split':[*range(20,80,1)],
+                             'regressor__min_samples_leaf':[*range(10,40,1)],
+                             'regressor__max_samples':[None]}}
+
+imputer = SimpleImputer(missing_values=np.nan,
+                        strategy='mean',
+                        add_indicator=True)
+
+scaler = StandardScaler()
+
+splitter = TimeSeriesSplit(n_splits=5)
+
+pipe = Pipeline([('imputer',imputer),
+                ('scaler',scaler),
+                ('regressor',regressors['rf_ts'])])
+
+random_search_iter = 50
+score_metric = 'neg_mean_squared_error'
+
+rf_ts_cv = RandomizedSearchCV(estimator=pipe,
+                              param_distributions=hyperparameters['rf_ts'],
+                              n_iter=random_search_iter,
+                              scoring=score_metric,
+                              cv=splitter,
+                              verbose=3)
+
+rf_ts_cv.fit(X_ts_train,Y_ts_train)
+
+rf_ts_cv_results = rf_ts_cv.cv_results_
+rf_ts_cv_best = rf_ts_cv.best_estimator_
+
+# Refit on all training data
+rf_ts_cv_best.fit(X_train,Y_train)
+pred_rf_ts_train = rf_ts_cv_best.predict(X_train)
+pred_rf_ts_valid = rf_ts_cv_best.predict(X_valid)
+resid_rf_ts_train = Y_train - pred_rf_ts_train
+resid_rf_ts_valid = Y_valid - pred_rf_ts_valid
+# Compute metrics
+pred_rf_ts_metrics_train = compute_reg_metrics(Y_train,pred_rf_ts_train)
+pred_rf_ts_metrics_valid = compute_reg_metrics(Y_valid,pred_rf_ts_valid)
+
+#var_names_imputed = [*var_names, *[i+'_imputed' for i in var_names]]# needs updating!
+# Plot diagnostics
+plot_feat_imp(rf_ts_cv_best.named_steps['regressor'],var_names_imputed)
+plot_resid(resid_rf_ts_train)
+plot_pred_vs_act(Y_train, pred_rf_ts_train, 200, x_low=0, x_high=100, y_low=0, y_high=100)
+# Plot predictions
+plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_rf_ts_train,
+               date_low=datetime(2016,10,1),date_high=datetime(2016,10,31))
+# Plot residuals
+plot_resid_box(resid_rf_ts_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 
 #--------------------------Feature engineering------------------------------
 
