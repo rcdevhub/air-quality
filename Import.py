@@ -124,11 +124,12 @@ def plot_feat_imp(model,names):
     
     return feat_imp
 
-def plot_resid(residuals):
+def plot_resid(residuals,datatype):
     '''Plot regression residuals.'''
     plt.figure()
     sns.histplot(residuals)
     plt.axvline(x=0,linewidth=1,color='black')
+    plt.title('Residuals, '+datatype+' data')
     return None
 
 def plot_pred_vs_act(Y_true,Y_pred,bins,x_low=None,x_high=None,y_low=None,y_high=None):
@@ -430,6 +431,7 @@ reg_cv.fit(X_train,Y_train)
 reg_cv_results = reg_cv.cv_results_
 reg_cv_best = reg_cv.best_estimator_
 reg_cv_best_params = reg_cv_best.get_params()
+
 # Refit on all training data
 reg_cv_best.fit(X_train,Y_train)
 pred_base_train = reg_cv_best.predict(X_train)
@@ -446,8 +448,8 @@ pred_base_metrics_valid['resid'] = pd.DataFrame(resid_base_valid).describe()
 var_names_imputed = [*var_names, *[i+'_imputed' for i in var_names]]
 # Plot diagnostics
 plot_feat_imp(reg_cv_best.named_steps['regressor'],var_names_imputed)
-plot_resid(resid_base_train)
-plot_resid(resid_base_valid)
+plot_resid(resid_base_train,'training')
+plot_resid(resid_base_valid,'validation')
 plot_resid_box(resid_base_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 plot_pred_vs_act(Y_train, pred_base_train, 200, x_low=0, x_high=100, y_low=0, y_high=100)
 plot_pred_vs_act(Y_valid, pred_base_valid, 200, x_low=0, x_high=100, y_low=0, y_high=100)
@@ -465,16 +467,16 @@ demo_dates_train = [(datetime(2013,3,13),datetime(2013,3,14),'one day'),
                     (datetime(2013,1,1),datetime(2014,1,1),'one year'),
                     (datetime(2012,1,1),datetime(2014,1,1),'two years')]
 demo_dates_valid = [(datetime(2017,3,13),datetime(2017,3,14),'one day'),
-                    (datetime(2017,11,18),datetime(2017,11,19),'one day'),
+                    (datetime(2017,11,21),datetime(2017,11,22),'one day'),
                     (datetime(2018,5,3),datetime(2018,5,4),'one day'),
-                    (datetime(2017,2,12),datetime(2017,2,15),'two days'),
+                    (datetime(2017,2,15),datetime(2017,2,16),'two days'),
                     (datetime(2017,3,1),datetime(2017,3,8),'one week'),
                     (datetime(2017,5,1),datetime(2017,5,15),'two weeks'),
                     (datetime(2018,10,1),datetime(2018,11,1),'one month'),
                     (datetime(2017,10,1),datetime(2017,11,1),'one month'),
                     (datetime(2017,6,1),datetime(2017,9,1),'one quarter'),
-                    (datetime(2017,6,1),datetime(2017,1,1),'one half-year'),
-                    (datetime(2018,1,1),datetime(2018,1,1),'one year'),
+                    (datetime(2018,6,1),datetime(2018,12,31),'one half-year'),
+                    (datetime(2017,5,1),datetime(2018,4,30),'one year'),
                     (datetime(2017,1,1),datetime(2018,12,31),'two years')]
 
 for i in demo_dates_train:
@@ -484,7 +486,7 @@ for i in demo_dates_train:
 for i in demo_dates_valid:
     plot_pred_time(data_valid['MeasurementDateGMT'],Y_valid,pred_base_valid,
                date_low=i[0],date_high=i[1],caption=i[2])
-
+    
 #--------------------------Time Series EDA---------------------------
 
 # Plot ACF
@@ -517,7 +519,7 @@ pred_ar2_train = ar2_fit.predict()
 # Residuals are less biased than the non-ts baseline above
 pred_ar2_metrics_train = compute_reg_metrics(Y_train,pred_ar2_train.values)
 resid_ar2_train = pd.DataFrame(ar2_fit.resid)
-print(resid_ar2_train.describe())
+pred_ar2_metrics_train['resid'] = resid_ar2_train.describe()
 resid_ar2_train.plot()
 plot_resid(resid_ar2_train)
 plot_resid_box(np.squeeze(resid_ar2_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
@@ -541,7 +543,7 @@ print(sar2_2_24_fit.summary())
 pred_sar2_2_24_train = sar2_2_24_fit.predict()
 pred_sar2_2_24_metrics_train = compute_reg_metrics(Y_train,pred_sar2_2_24_train.values)
 resid_sar2_2_24_train = pd.DataFrame(sar2_2_24_fit.resid)
-print(resid_sar2_2_24_train.describe())
+pred_sar2_2_24_metrics_train['resid'] = resid_sar2_2_24_train.describe()
 resid_sar2_2_24_train.plot()
 plot_resid(resid_sar2_2_24_train)
 plot_resid_box(np.squeeze(resid_sar2_2_24_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
@@ -554,6 +556,7 @@ for i in demo_dates_train:
 
 #--------------------------Time Series Data Prep------------------------------
 
+# TO DO: Using PyTorch class
 # ts2 = data_train[['MeasurementDateGMT','Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']].copy()
 
 # ts2.reset_index(inplace=True)
@@ -575,14 +578,17 @@ for i in demo_dates_train:
 # dataloader = tsd.to_dataloader(batch_size=len(tsd))
 
 # Prepare sliding window data from training features
-
 window_length = 80
 
 mult,_ = make_multi_window(X_train,window_length)
 X_ts_train = reshape_multi_window(mult)
 # Target is not used in training data
 _,Y_ts_train = make_window_data(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values,
-                                         window_length)
+                                window_length)
+mult_v,_ = make_multi_window(X_valid,window_length)
+X_ts_valid = reshape_multi_window(mult_v)
+_,Y_ts_valid = make_window_data(data_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values,
+                                window_length)
 
 #--------------------------Regression TS model------------------------------
 
@@ -605,18 +611,35 @@ rdg_alpha = pipe['regressor'].alpha_
 
 pred_rdg_train = pipe.predict(X_ts_train)
 resid_rdg_train = Y_ts_train - pred_rdg_train
+pred_rdg_valid = pipe.predict(X_ts_valid)
+resid_rdg_valid = Y_ts_valid - pred_rdg_valid
 
 # Compute metrics
 pred_rdg_metrics_train = compute_reg_metrics(Y_ts_train,pred_rdg_train)
-print(pd.DataFrame(resid_rdg_train).describe())
+pred_rdg_metrics_train['resid'] = pd.DataFrame(resid_rdg_train).describe()
+pred_rdg_metrics_valid = compute_reg_metrics(Y_ts_valid,pred_rdg_valid)
+pred_rdg_metrics_valid['resid'] = pd.DataFrame(resid_rdg_valid).describe()
+
 # Plots
 plot_resid(resid_rdg_train)
-plot_pred_vs_act(Y_ts_train, pred_rdg_train, bins=200,
-                 x_low=0, x_high=100, y_low=0, y_high=100)
-plot_pred_time(data_train['MeasurementDateGMT'][window_length:],Y_ts_train,pred_rdg_train,
-               date_low=datetime(2013,11,1),date_high=datetime(2013,11,20))
+plot_resid(resid_rdg_valid)
 plot_resid_box(resid_rdg_train,
                pd.DatetimeIndex(data_train['MeasurementDateGMT'][window_length:]).year)
+plot_pred_vs_act(Y_ts_train, pred_rdg_train, bins=200,
+                 x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_vs_act(Y_ts_valid, pred_rdg_valid, bins=200,
+                 x_low=0, x_high=100, y_low=0, y_high=100)
+
+plot_pred_time(data_train['MeasurementDateGMT'][window_length:],Y_ts_train,pred_rdg_train,
+               date_low=datetime(2013,11,1),date_high=datetime(2013,11,20))
+
+for i in demo_dates_train:
+    plot_pred_time(data_train['MeasurementDateGMT'][window_length:],Y_ts_train,pred_rdg_train,
+               date_low=i[0],date_high=i[1],caption=i[2])
+    
+for i in demo_dates_valid:
+    plot_pred_time(data_valid['MeasurementDateGMT'][window_length:],Y_ts_valid,pred_rdg_valid,
+               date_low=i[0],date_high=i[1],caption=i[2])
 
 #--------------------------Random forest TS model------------------------------
 
