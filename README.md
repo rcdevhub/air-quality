@@ -1,7 +1,7 @@
 # Air Quality in London
 ---------------------------------<i>Work in Progress</i>-----------------------------
 
-This repo contains a study of Nitrogen Oxide (NO2) emissions in London.
+This repo contains a study of Nitrogen Oxide (NO2) emissions in London. Air pollution in London has been a topic of environmental and political concern recently, and has lead to the introduction of the Ultra Low Emission Zone (ULEZ).
 
 Emissions data was downloaded from the  <a href="https://www.londonair.org.uk/Londonair/API/" target="_blank">Environmental Research Group API</a>, which monitors polluton levels at over 200 sites around London. Five sites with sufficient historical data were randomly selected for the study.
 
