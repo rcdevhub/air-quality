@@ -21,7 +21,7 @@ The goal of the analysis was to predict Nitrogen Oxide (NO2) emissions for Islin
 
 ### Missing data
 
-As shown above, there are gaps in the pollution time series. The amount of missing data is shown in the below table. Dropping all the missing data would result in the loss of ~40% of data. It was decided to drop the missing time points from the target site (Islington) only, so as to compare results more easily. For simplicity, the other missing values were imputed using the means of the time series.
+As shown above, there are gaps in the pollution time series. The amount of missing data is shown in the below table. The reason for the missing data is unknown and was assumed to be random. Dropping all the missing data would result in the loss of ~40% of data. It was decided to drop the missing time points from the target site (Islington) only, so as to compare results more easily. For simplicity, the other missing values were imputed using the means of the time series.
 
 | Item | % Missing |
 | :----|----------:|
