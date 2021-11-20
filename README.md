@@ -54,7 +54,12 @@ A random forest model was used as a baseline prediction. This treated the data p
 | Residual Median |-0.47 |-4.14 |
 | Residual Standard Deviation |4.70 |10.55 |
 
+<img src="plots/pred-act-base-training-.png" width="420" height="280" /><img src="plots/pred-act-base-validation-.png" width="420" height="280" />
+<img src="plots/resid-base-training-.png" width="420" height="280" /><img src="plots/resid-base-validation-.png" width="420" height="280" />
+
 ### Time series model - Regression
+
+A set of models were fitted using sliding windows of 80 hours on the input time series. This was to capture the daily patterns of traffic. An important dynamic is the morning and evening rush hours on weekdays. Firstly a ridge regression model was fitted.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
@@ -64,6 +69,9 @@ A random forest model was used as a baseline prediction. This treated the data p
 | Residual Mean |-0.00 |-4.54 |
 | Residual Median |-1.54 |-5.38 |
 | Residual Standard Deviation |15.47 |12.02 |
+
+<img src="plots/pred-act-rdg-training-.png" width="420" height="280" /><img src="plots/pred-act-rdg-validation-.png" width="420" height="280" />
+<img src="plots/resid-rdg-training-.png" width="420" height="280" /><img src="plots/resid-rdg-validation-.png" width="420" height="280" />
 
 ### Time series model - Random forest
 
