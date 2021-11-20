@@ -146,13 +146,14 @@ def plot_pred_vs_act(Y_true,Y_pred,bins,x_low=None,x_high=None,y_low=None,y_high
     plt.ylabel('Predicted')
     return None
 
-def plot_pred_time(dates,Y_true,Y_pred,date_low=None,date_high=None):
+def plot_pred_time(dates,Y_true,Y_pred,date_low=None,date_high=None,caption=None):
     '''Plot predicted and actual time series between two dates.'''
     fig, ax = plt.subplots(1,1,figsize=(10,5))
     ax.plot(dates,Y_true,linewidth=0.5,label='Actual')
     ax.plot(dates,Y_pred,linewidth=0.5,label='Predicted')
     if (date_low is not None) & (date_high is not None):
         ax.set_xlim([date_low,date_high])
+        plt.title('Prediction over '+caption+' starting '+date_low.strftime('%a %d %b %Y'))
     plt.legend()
     return None
 
@@ -206,6 +207,7 @@ def reshape_multi_window(multi):
 #--------------------------Get data----------------------------------
     
 # Get sitelist
+# TO DO: Break API call into separate script
 # sites = get_sites()
 # sites.to_pickle('data/pollution/sites.pkl')
 sites = pd.read_pickle('data/pollution/sites.pkl')
@@ -367,8 +369,8 @@ data_cut = data.loc[data['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].
 # Train-test split
 # Choose [2010-2016] as training data, [2017-2018] as validation data,
 # [2019] as test data
-data_train = data_cut.loc[data['MeasurementDateGMT']<datetime(2018,1,1)]
-data_valid = data_cut.loc[(data['MeasurementDateGMT']>=datetime(2018,1,1))
+data_train = data_cut.loc[data['MeasurementDateGMT']<datetime(2017,1,1)]
+data_valid = data_cut.loc[(data['MeasurementDateGMT']>=datetime(2017,1,1))
                           & (data['MeasurementDateGMT']<datetime(2019,1,1))]
 data_test = data_cut.loc[data['MeasurementDateGMT']>=datetime(2019,1,1)]
 
@@ -390,11 +392,10 @@ Y_valid = data_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].valu
 
 #--------------------------Baseline model----------------------------------
 
-# Models
-# Random forest, ignoring time component
+# Random forest, no time series component
 regressors = {'rf': RandomForestRegressor()}
 
-hyperparameters = {'rf':{'regressor__n_estimators':[100],
+hyperparameters = {'rf':{'regressor__n_estimators':[*range(50,150,1)],
                          'regressor__max_depth':[*range(1,50,1)],
                          'regressor__max_features':[*range(1,10,1)],
                          'regressor__min_samples_split':[2],
@@ -415,7 +416,7 @@ pipe = Pipeline([('imputer',imputer),
                  ('scaler',scaler),
                  ('regressor',regressors['rf'])])
 
-random_search_iter = 20
+random_search_iter = 30
 score_metric = 'neg_mean_squared_error'
 
 reg_cv = RandomizedSearchCV(estimator=pipe,
@@ -428,26 +429,61 @@ reg_cv = RandomizedSearchCV(estimator=pipe,
 reg_cv.fit(X_train,Y_train)
 reg_cv_results = reg_cv.cv_results_
 reg_cv_best = reg_cv.best_estimator_
+reg_cv_best_params = reg_cv_best.get_params()
 # Refit on all training data
 reg_cv_best.fit(X_train,Y_train)
 pred_base_train = reg_cv_best.predict(X_train)
 pred_base_valid = reg_cv_best.predict(X_valid)
 resid_base_train = Y_train - pred_base_train
 resid_base_valid = Y_valid - pred_base_valid
+
 # Compute metrics
 pred_base_metrics_train = compute_reg_metrics(Y_train,pred_base_train)
 pred_base_metrics_valid = compute_reg_metrics(Y_valid,pred_base_valid)
+pred_base_metrics_train['resid'] = pd.DataFrame(resid_base_train).describe()
+pred_base_metrics_valid['resid'] = pd.DataFrame(resid_base_valid).describe()
 
 var_names_imputed = [*var_names, *[i+'_imputed' for i in var_names]]
 # Plot diagnostics
 plot_feat_imp(reg_cv_best.named_steps['regressor'],var_names_imputed)
 plot_resid(resid_base_train)
-plot_pred_vs_act(Y_train, pred_base_train, 200, x_low=0, x_high=100, y_low=0, y_high=100)
-# Plot predictions
-plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_base_train,
-               date_low=datetime(2016,10,1),date_high=datetime(2016,10,31))
-# Plot residuals
+plot_resid(resid_base_valid)
 plot_resid_box(resid_base_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
+plot_pred_vs_act(Y_train, pred_base_train, 200, x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_vs_act(Y_valid, pred_base_valid, 200, x_low=0, x_high=100, y_low=0, y_high=100)
+# Plot predictions
+demo_dates_train = [(datetime(2013,3,13),datetime(2013,3,14),'one day'),
+                    (datetime(2015,11,18),datetime(2015,11,19),'one day'),
+                    (datetime(2016,5,3),datetime(2016,5,4),'one day'),
+                    (datetime(2014,2,12),datetime(2014,2,15),'two days'),
+                    (datetime(2016,3,1),datetime(2016,3,8),'one week'),
+                    (datetime(2011,5,1),datetime(2011,5,15),'two weeks'),
+                    (datetime(2016,10,1),datetime(2016,11,1),'one month'),
+                    (datetime(2016,10,1),datetime(2016,11,1),'one month'),
+                    (datetime(2015,6,1),datetime(2015,9,1),'one quarter'),
+                    (datetime(2010,6,1),datetime(2011,1,1),'one half-year'),
+                    (datetime(2013,1,1),datetime(2014,1,1),'one year'),
+                    (datetime(2012,1,1),datetime(2014,1,1),'two years')]
+demo_dates_valid = [(datetime(2017,3,13),datetime(2017,3,14),'one day'),
+                    (datetime(2017,11,18),datetime(2017,11,19),'one day'),
+                    (datetime(2018,5,3),datetime(2018,5,4),'one day'),
+                    (datetime(2017,2,12),datetime(2017,2,15),'two days'),
+                    (datetime(2017,3,1),datetime(2017,3,8),'one week'),
+                    (datetime(2017,5,1),datetime(2017,5,15),'two weeks'),
+                    (datetime(2018,10,1),datetime(2018,11,1),'one month'),
+                    (datetime(2017,10,1),datetime(2017,11,1),'one month'),
+                    (datetime(2017,6,1),datetime(2017,9,1),'one quarter'),
+                    (datetime(2017,6,1),datetime(2017,1,1),'one half-year'),
+                    (datetime(2018,1,1),datetime(2018,1,1),'one year'),
+                    (datetime(2017,1,1),datetime(2018,12,31),'two years')]
+
+for i in demo_dates_train:
+    plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_base_train,
+               date_low=i[0],date_high=i[1],caption=i[2])
+    
+for i in demo_dates_valid:
+    plot_pred_time(data_valid['MeasurementDateGMT'],Y_valid,pred_base_valid,
+               date_low=i[0],date_high=i[1],caption=i[2])
 
 #--------------------------Time Series EDA---------------------------
 
@@ -484,20 +520,21 @@ resid_ar2_train = pd.DataFrame(ar2_fit.resid)
 print(resid_ar2_train.describe())
 resid_ar2_train.plot()
 plot_resid(resid_ar2_train)
+plot_resid_box(np.squeeze(resid_ar2_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 # Note the ACF graph of the residuals has lines way outside the confidence
 # interval, indicating that model is not fully explaining behaviour
 plot_acf(resid_ar2_train)
 plt.ylim([-0.1,0.1])
 plot_pred_vs_act(Y_train, pred_ar2_train.values, 200, x_low=0, x_high=100, y_low=0, y_high=100)
-# Pick a low range to see daily lag
-plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_ar2_train.values,
-               date_low=datetime(2015,6,7),date_high=datetime(2015,6,15))
-plot_resid_box(np.squeeze(resid_ar2_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
+for i in demo_dates_train:
+    plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_ar2_train.values,
+                   date_low=i[0],date_high=i[1],caption=i[2])
 
 #--------------------------SARIMA------------------------------
 
 # AR(2) with 24-hour (daily) seasonality
-# Still largely a persistence model, slightly improved RMSE, residuals now biased though
+# Still largely a persistence model, slightly improved RMSE,
+# residuals now positively biased, so tends to underpredict
 sar2_2_24 = SARIMAX(tseries_train,order=(2,0,0),seasonal_order=(2,0,0,24))
 sar2_2_24_fit = sar2_2_24.fit()
 print(sar2_2_24_fit.summary())
@@ -507,12 +544,13 @@ resid_sar2_2_24_train = pd.DataFrame(sar2_2_24_fit.resid)
 print(resid_sar2_2_24_train.describe())
 resid_sar2_2_24_train.plot()
 plot_resid(resid_sar2_2_24_train)
+plot_resid_box(np.squeeze(resid_sar2_2_24_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 plot_acf(resid_sar2_2_24_train)
 plt.ylim([-0.1,0.1])
 plot_pred_vs_act(Y_train, pred_sar2_2_24_train.values, 200, x_low=0, x_high=100, y_low=0, y_high=100)
-plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_sar2_2_24_train.values,
-               date_low=datetime(2012,12,20),date_high=datetime(2012,12,31))
-plot_resid_box(np.squeeze(resid_sar2_2_24_train.values),pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
+for i in demo_dates_train:
+    plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_sar2_2_24_train.values,
+                   date_low=i[0],date_high=i[1],caption=i[2])
 
 #--------------------------Time Series Data Prep------------------------------
 
@@ -632,12 +670,11 @@ pred_rf_ts_metrics_valid = compute_reg_metrics(Y_valid,pred_rf_ts_valid)
 # Plot diagnostics
 plot_feat_imp(rf_ts_cv_best.named_steps['regressor'],var_names_imputed)
 plot_resid(resid_rf_ts_train)
+plot_resid_box(resid_rf_ts_train,pd.DatetimeIndex(data_train['MeasurementDateGMT'][window_length:]).year)
 plot_pred_vs_act(Y_train, pred_rf_ts_train, 200, x_low=0, x_high=100, y_low=0, y_high=100)
 # Plot predictions
-plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_rf_ts_train,
+plot_pred_time(data_train['MeasurementDateGMT'][window_length:],Y_train,pred_rf_ts_train,
                date_low=datetime(2016,10,1),date_high=datetime(2016,10,31))
-# Plot residuals
-plot_resid_box(resid_rf_ts_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
 
 #--------------------------Feature engineering------------------------------
 
