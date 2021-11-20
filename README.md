@@ -44,3 +44,13 @@ and [2019] as test data. Further time-series cross-validation was done on the tr
 ### Baseline model
 
 A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 146 trees using a max of 10 features and a max depth of 28. Metrics and graphs are shown below.
+
+| Metric | Training | Validation |
+| :--- | ---:|---:|
+| Mean Absolute Error |3.40 |8.47 |
+| Mean Squared Error |21.32 |121.91 |
+| Root Mean Squared Error |4.62 |11.04 |
+| Residual Mean |-0.06 |-2.91 |
+| Residual Median |-0.47 |-3.70 |
+| Residual Standard Deviation |4.62 |10.65 |
+
