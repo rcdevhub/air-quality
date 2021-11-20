@@ -47,10 +47,10 @@ A random forest model was used as a baseline prediction. This treated the data p
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
-| Mean Absolute Error |3.40 |8.47 |
-| Mean Squared Error |21.32 |121.91 |
-| Root Mean Squared Error |4.62 |11.04 |
-| Residual Mean |-0.06 |-2.91 |
-| Residual Median |-0.47 |-3.70 |
-| Residual Standard Deviation |4.62 |10.65 |
+| Mean Absolute Error |3.44 |8.63 |
+| Mean Squared Error |22.05 |123.76 |
+| Root Mean Squared Error |4.70 |11.12 |
+| Residual Mean |-0.05 |-3.54 |
+| Residual Median |-0.47 |-4.14 |
+| Residual Standard Deviation |4.70 |10.55 |
 
