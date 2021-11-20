@@ -40,3 +40,7 @@ As shown above, there are gaps in the pollution time series. The amount of missi
 
 It was decided to use the years [2010-2016] as training data, [2017-2018] as validation data,
 and [2019] as test data. Further time-series cross-validation was done on the training data.
+
+### Baseline model
+
+A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 146 trees using a max of 10 features and a max depth of 28. Metrics and graphs are shown below.
