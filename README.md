@@ -43,7 +43,7 @@ and [2019] as test data. Further time-series cross-validation was done on the tr
 
 ### Baseline model
 
-A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 146 trees using a max of 10 features and a max depth of 28. Metrics and graphs are shown below.
+A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 101 trees using a max of 4 features and a max depth of 34. Metrics and graphs are shown below.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
@@ -54,3 +54,24 @@ A random forest model was used as a baseline prediction. This treated the data p
 | Residual Median |-0.47 |-4.14 |
 | Residual Standard Deviation |4.70 |10.55 |
 
+### Time series model - Regression
+
+| Metric | Training | Validation |
+| :--- | ---:|---:|
+| Mean Absolute Error |11.75 |10.18 |
+| Mean Squared Error |239.21 |165.03 |
+| Root Mean Squared Error |15.47 |12.85 |
+| Residual Mean |-0.00 |-4.54 |
+| Residual Median |-1.54 |-5.38 |
+| Residual Standard Deviation |15.47 |12.02 |
+
+### Time series model - Random forest
+
+| Metric | Training | Validation |
+| :--- | ---:|---:|
+| Mean Absolute Error | | |
+| Mean Squared Error | | |
+| Root Mean Squared Error | | |
+| Residual Mean | | |
+| Residual Median | | |
+| Residual Standard Deviation | | |
