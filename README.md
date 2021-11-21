@@ -77,9 +77,9 @@ A set of models were fitted using sliding windows of 80 hours on the input time 
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
-| Mean Absolute Error | | |
-| Mean Squared Error | | |
-| Root Mean Squared Error | | |
-| Residual Mean | | |
-| Residual Median | | |
-| Residual Standard Deviation | | |
+| Mean Absolute Error |8.44 |10.39|
+| Mean Squared Error |129.06 |162.82|
+| Root Mean Squared Error |11.36 |12.76|
+| Residual Mean |-0.07 |-5.32 |
+| Residual Median |-1.48 |-6.55 |
+| Residual Standard Deviation |11.36 |11.6|
