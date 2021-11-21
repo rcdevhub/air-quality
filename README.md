@@ -43,7 +43,7 @@ and [2019] as test data. Further time-series cross-validation was done on the tr
 
 ### Baseline model
 
-A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 101 trees using a max of 4 features and a max depth of 34. Metrics and graphs are shown below.
+A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 101 trees using a max of 4 features and a max depth of 34. Metrics and graphs are shown below, with extracts from the time series.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
@@ -56,6 +56,7 @@ A random forest model was used as a baseline prediction. This treated the data p
 
 <img src="plots/pred-act-base-training-.png" width="420" height="280" /><img src="plots/pred-act-base-validation-.png" width="420" height="280" />
 <img src="plots/resid-base-training-.png" width="420" height="280" /><img src="plots/resid-base-validation-.png" width="420" height="280" />
+<img src="plots/pred-time-base-validation-2017-03-06-2017-03-09.png" width="480" height="240" /><img src="plots/pred-time-base-validation-2017-05-01-2017-05-15.png" width="480" height="240" />
 
 ### Time series model - Regression
 
@@ -83,3 +84,6 @@ A set of models were fitted using sliding windows of 80 hours on the input time 
 | Residual Mean |-0.07 |-5.32 |
 | Residual Median |-1.48 |-6.55 |
 | Residual Standard Deviation |11.36 |11.6|
+
+<img src="plots/pred-act-rf-ts-training-.png" width="420" height="280" /><img src="plots/pred-act-rf-ts-validation-.png" width="420" height="280" />
+<img src="plots/resid-rf-ts-training-.png" width="420" height="280" /><img src="plots/resid-rf-ts-validation-.png" width="420" height="280" />
