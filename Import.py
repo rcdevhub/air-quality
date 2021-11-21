@@ -14,6 +14,7 @@ os.chdir('C://Code/Projects/air-quality')
 
 import io
 import json
+import pickle
 import requests
 import copy
 import numpy as np
@@ -460,7 +461,7 @@ plot_pred_vs_act(Y_valid, pred_base_valid, 200, datatype='validation', label='ba
 demo_dates_train = [(datetime(2013,3,13),datetime(2013,3,14),'one day'),
                     (datetime(2015,11,18),datetime(2015,11,19),'one day'),
                     (datetime(2016,5,3),datetime(2016,5,4),'one day'),
-                    (datetime(2014,2,12),datetime(2014,2,15),'two days'),
+                    (datetime(2014,2,12),datetime(2014,2,14),'three days'),
                     (datetime(2016,3,1),datetime(2016,3,8),'one week'),
                     (datetime(2011,5,1),datetime(2011,5,15),'two weeks'),
                     (datetime(2016,10,1),datetime(2016,11,1),'one month'),
@@ -472,7 +473,7 @@ demo_dates_train = [(datetime(2013,3,13),datetime(2013,3,14),'one day'),
 demo_dates_valid = [(datetime(2017,3,13),datetime(2017,3,14),'one day'),
                     (datetime(2017,11,21),datetime(2017,11,22),'one day'),
                     (datetime(2018,5,3),datetime(2018,5,4),'one day'),
-                    (datetime(2017,2,15),datetime(2017,2,16),'two days'),
+                    (datetime(2017,3,6),datetime(2017,3,9),'three days'),
                     (datetime(2017,3,1),datetime(2017,3,8),'one week'),
                     (datetime(2017,5,1),datetime(2017,5,15),'two weeks'),
                     (datetime(2018,10,1),datetime(2018,11,1),'one month'),
@@ -682,30 +683,41 @@ rf_ts_cv = RandomizedSearchCV(estimator=pipe,
 
 rf_ts_cv.fit(X_ts_train,Y_ts_train)
 
+# Save pipeline
+# with open('output/rf_ts_cv.pkl','wb') as f:
+#     pickle.dump(rf_ts_cv,f)
+
 rf_ts_cv_results = rf_ts_cv.cv_results_
 rf_ts_cv_best = rf_ts_cv.best_estimator_
 
 # Refit on all training data
-rf_ts_cv_best.fit(X_train,Y_train)
-pred_rf_ts_train = rf_ts_cv_best.predict(X_train)
-pred_rf_ts_valid = rf_ts_cv_best.predict(X_valid)
-resid_rf_ts_train = Y_train - pred_rf_ts_train
-resid_rf_ts_valid = Y_valid - pred_rf_ts_valid
+rf_ts_cv_best.fit(X_ts_train,Y_ts_train)
+pred_rf_ts_train = rf_ts_cv_best.predict(X_ts_train)
+pred_rf_ts_valid = rf_ts_cv_best.predict(X_ts_valid)
+resid_rf_ts_train = Y_ts_train - pred_rf_ts_train
+resid_rf_ts_valid = Y_ts_valid - pred_rf_ts_valid
 # Compute metrics
-pred_rf_ts_metrics_train = compute_reg_metrics(Y_train,pred_rf_ts_train)
-pred_rf_ts_metrics_valid = compute_reg_metrics(Y_valid,pred_rf_ts_valid)
+pred_rf_ts_metrics_train = compute_reg_metrics(Y_ts_train,pred_rf_ts_train)
+pred_rf_ts_metrics_valid = compute_reg_metrics(Y_ts_valid,pred_rf_ts_valid)
+pred_rf_ts_metrics_train['resid'] = pd.DataFrame(resid_rf_ts_train).describe()
+pred_rf_ts_metrics_valid['resid'] = pd.DataFrame(resid_rf_ts_valid).describe()
+
+# Save results
+# with open('output/pred_rf_ts_metrics_train.pkl','wb') as f:
+#     pickle.dump(pred_rf_ts_metrics_train,f)
+# with open('output/pred_rf_ts_metrics_valid.pkl','wb') as f:
+#     pickle.dump(pred_rf_ts_metrics_valid,f)
 
 #var_names_imputed = [*var_names, *[i+'_imputed' for i in var_names]]# needs updating!
 # Plot diagnostics
-plot_feat_imp(rf_ts_cv_best.named_steps['regressor'],var_names_imputed)
+#plot_feat_imp(rf_ts_cv_best.named_steps['regressor'],np.zeros(X_ts_train.shape[1]*2))
+
 plot_resid(resid_rf_ts_train,'training','rf-ts')
 plot_resid(resid_rf_ts_valid,'validation','rf-ts')
 plot_resid_box(resid_rf_ts_train,pd.DatetimeIndex(data_train['MeasurementDateGMT'][window_length:]).year)
-plot_pred_vs_act(Y_train, pred_rf_ts_train, 200, datatype='training', label='rf-ts', x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_vs_act(Y_ts_train, pred_rf_ts_train, 200, datatype='training', label='rf-ts', x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_vs_act(Y_ts_valid, pred_rf_ts_valid, 200, datatype='validation', label='rf-ts', x_low=0, x_high=100, y_low=0, y_high=100)
 # Plot predictions
-plot_pred_time(data_train['MeasurementDateGMT'][window_length:],Y_train,pred_rf_ts_train,
-               date_low=datetime(2016,10,1),date_high=datetime(2016,10,31))
-
 for i in demo_dates_train:
     plot_pred_time(data_train['MeasurementDateGMT'][window_length:],Y_ts_train,pred_rf_ts_train,
                    datatype='training',label='rf-ts',
@@ -718,3 +730,107 @@ for i in demo_dates_valid:
 
 #--------------------------Feature engineering------------------------------
 
+# Wind direction * wind speed
+data_feat_train = data_train.copy()
+data_feat_train['wind_spd_dir'] = data_train['wind_speed']*data_train['wind_direction']
+# Chronological
+data_feat_train['hour_of_day'] = data_feat_train['MeasurementDateGMT'].dt.hour
+data_feat_train['weekday'] = data_feat_train['MeasurementDateGMT'].dt.dayofweek
+data_feat_train['week_of_year'] = data_feat_train['MeasurementDateGMT'].dt.isocalendar().week
+data_feat_train['year'] = data_feat_train['MeasurementDateGMT'].dt.year
+
+data_feat_valid = data_valid.copy()
+data_feat_valid['wind_spd_dir'] = data_valid['wind_speed']*data_valid['wind_direction']
+data_feat_valid['hour_of_day'] = data_feat_valid['MeasurementDateGMT'].dt.hour
+data_feat_valid['weekday'] = data_feat_valid['MeasurementDateGMT'].dt.dayofweek
+data_feat_valid['week_of_year'] = data_feat_valid['MeasurementDateGMT'].dt.isocalendar().week
+data_feat_valid['year'] = data_feat_valid['MeasurementDateGMT'].dt.year
+
+# Prepare data
+
+X_feat_train = data_feat_train.drop(['MeasurementDateGMT',
+                           'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
+                          axis=1).values
+Y_feat_train = data_feat_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values
+
+var_names_feat = data_feat_train.drop(['MeasurementDateGMT',
+                             'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
+                            axis=1).columns
+
+X_feat_valid = data_feat_valid.drop(['MeasurementDateGMT',
+                           'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
+                          axis=1).values
+Y_feat_valid = data_feat_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].values
+
+#--------------------------Baseline with features---------------------------
+
+# Random forest, no time series component
+regressors = {'rf': RandomForestRegressor()}
+
+hyperparameters = {'rf':{'regressor__n_estimators':[*range(50,150,1)],
+                         'regressor__max_depth':[*range(1,50,1)],
+                         'regressor__max_features':[*range(1,10,1)],
+                         'regressor__min_samples_split':[2],
+                         'regressor__min_samples_leaf':[1],
+                         'regressor__max_samples':[None]
+                             }}
+
+# Replace missing values with mean
+imputer = SimpleImputer(missing_values=np.nan,
+                        strategy='mean',
+                        add_indicator=True)
+# Normalise
+scaler = StandardScaler()
+# Time-based cv
+splitter = TimeSeriesSplit(n_splits=5)
+
+pipe = Pipeline([('imputer',imputer),
+                 ('scaler',scaler),
+                 ('regressor',regressors['rf'])])
+
+random_search_iter = 30
+score_metric = 'neg_mean_squared_error'
+
+reg_feat_cv = RandomizedSearchCV(estimator=pipe,
+                            param_distributions=hyperparameters['rf'],
+                            n_iter=random_search_iter,
+                            scoring=score_metric,
+                            cv=splitter,
+                            verbose=3)
+
+reg_feat_cv.fit(X_feat_train,Y_feat_train)
+reg_feat_cv_results = reg_feat_cv.cv_results_
+reg_feat_cv_best = reg_feat_cv.best_estimator_
+reg_feat_cv_best_params = reg_feat_cv_best.get_params()
+
+# Refit on all training data
+reg_feat_cv_best.fit(X_feat_train,Y_feat_train)
+pred_reg_feat_train = reg_feat_cv_best.predict(X_feat_train)
+pred_reg_feat_valid = reg_feat_cv_best.predict(X_feat_valid)
+resid_reg_feat_train = Y_feat_train - pred_reg_feat_train
+resid_reg_feat_valid = Y_feat_valid - pred_reg_feat_valid
+# Compute metrics
+pred_reg_feat_metrics_train = compute_reg_metrics(Y_feat_train,pred_reg_feat_train)
+pred_reg_feat_metrics_valid = compute_reg_metrics(Y_feat_valid,pred_reg_feat_valid)
+pred_reg_feat_metrics_train['resid'] = pd.DataFrame(resid_reg_feat_train).describe()
+pred_reg_feat_metrics_valid['resid'] = pd.DataFrame(resid_reg_feat_valid).describe()
+# Plot
+plot_resid(resid_reg_feat_train,'training','reg-feat')
+plot_resid(resid_reg_feat_valid,'validation','reg-feat')
+plot_resid_box(resid_reg_feat_train,pd.DatetimeIndex(data_feat_train['MeasurementDateGMT']).year)
+plot_pred_vs_act(Y_feat_train, pred_reg_feat_train, 200, datatype='training', label='reg-feat', x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_vs_act(Y_feat_valid, pred_reg_feat_valid, 200, datatype='validation', label='reg-feat', x_low=0, x_high=100, y_low=0, y_high=100)
+# Plot predictions
+for i in demo_dates_train:
+    plot_pred_time(data_feat_train['MeasurementDateGMT'],Y_feat_train,pred_reg_feat_train,
+                   datatype='training',label='reg-feat',
+               date_low=i[0],date_high=i[1],caption=i[2])
+    
+for i in demo_dates_valid:
+    plot_pred_time(data_feat_valid['MeasurementDateGMT'],Y_feat_valid,pred_reg_feat_valid,
+                   datatype='validation',label='reg-feat',
+               date_low=i[0],date_high=i[1],caption=i[2])
+
+# Feature importance
+var_names_feat_imputed = [*var_names_feat, *[i+'_imputed' for i in var_names_feat[:-4]]]
+plot_feat_imp(reg_feat_cv_best.named_steps['regressor'],var_names_feat_imputed)
