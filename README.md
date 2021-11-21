@@ -91,3 +91,18 @@ A random forest model was fitted, which should be able to better capture non-lin
 <img src="plots/pred-act-rf-ts-training-.png" width="420" height="280" /><img src="plots/pred-act-rf-ts-validation-.png" width="420" height="280" />
 <img src="plots/resid-rf-ts-training-.png" width="420" height="280" /><img src="plots/resid-rf-ts-validation-.png" width="420" height="280" />
 <img src="plots/pred-time-rf-ts-validation-2017-03-06-2017-03-09.png" width="480" height="240" /><img src="plots/pred-time-rf-ts-validation-2017-05-01-2017-05-15.png" width="480" height="240" />
+
+### Feature Engineering
+
+Several features were added in an attempt to improve model performance. Feature importance metrics showed that wind direction was more important than wind speed. This could be because Islington is located in North London and so north winds would be blowing clean air down, rather than polluted air carried by the prevailing south-west wind across London. A multiplicative interaction between wind speed and wind direction was introduced. Also, the time series window of 80 hours was not long enough to capture long-term trends. Chronological features were added, that is, hour of day, day of week, week of year and year. These were added as numerical variables.
+
+The baseline random forest model (non-time series) was the best performing model so far, and so this was taken forward for use with the new features. A new randomised search was performed, resulting in a model with 145 trees, with max features of 5 and a max depth of 39. Metrics and graphs are shown below.
+
+| Metric | Training | Validation |
+| :--- | ---:|---:|
+| Mean Absolute Error |2.86 |9.80|
+| Mean Squared Error |15.76 |143.75|
+| Root Mean Squared Error |3.97 |11.99|
+| Residual Mean |-0.05 |-7.32 |
+| Residual Median |-0.42 |-7.72 |
+| Residual Standard Deviation |3.97 |9.49|
