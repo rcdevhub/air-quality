@@ -43,7 +43,7 @@ and [2019] as test data. Further time-series cross-validation was done on the tr
 
 ### Baseline model
 
-A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 101 trees using a max of 4 features and a max depth of 34. Metrics and graphs are shown below, with extracts from the time series.
+A random forest model was used as a baseline prediction. This treated the data points as independent and did not take the time series into account, apart from the cross-validation split. A randomised search was performed to set appropriate hyperparameters. This resulted in a forest of 101 trees using a max of 4 features and a max depth of 34. Metrics and graphs are shown below, with extracts from the time series. Note the daily morning and evening rush hours. The model does not capture these local spikes particularly accurately, and the residuals are biased for the validation data from [2017-2018], possibly indicating a long-term traffic trend over years that is not captured.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
@@ -60,7 +60,7 @@ A random forest model was used as a baseline prediction. This treated the data p
 
 ### Time series model - Regression
 
-A set of models were fitted using sliding windows of 80 hours on the input time series. This was to capture the daily patterns of traffic. An important dynamic is the morning and evening rush hours on weekdays. Firstly a ridge regression model was fitted.
+A set of models were fitted using sliding windows of 80 hours on the input time series. This was to capture the daily patterns of traffic. An important dynamic is the morning and evening rush hours on weekdays. Firstly a ridge regression model was fitted. This did not perform as well as the baseline model and again had biased residuals in the validation data.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
@@ -73,8 +73,11 @@ A set of models were fitted using sliding windows of 80 hours on the input time 
 
 <img src="plots/pred-act-rdg-training-.png" width="420" height="280" /><img src="plots/pred-act-rdg-validation-.png" width="420" height="280" />
 <img src="plots/resid-rdg-training-.png" width="420" height="280" /><img src="plots/resid-rdg-validation-.png" width="420" height="280" />
+<img src="plots/pred-time-rdg-validation-2017-03-06-2017-03-09.png" width="480" height="240" /><img src="plots/pred-time-rdg-validation-2017-05-01-2017-05-15.png" width="480" height="240" />
 
 ### Time series model - Random forest
+
+A random forest model was fitted, which should be able to better capture non-linear trends. A randomised search was performed, resulting in a model with 61 trees using a max of 77 features and a max depth of 53. The total number of features was 1280 (80 time steps for each of 8 features, doubled for imputation flags). The metrics for the random forest are slightly better than the regression model, but not as good as the baseline. In addition, the hourly accuracy does not track the peaks as closely as the baseline does, indicating that the point-in-time information that the baseline model uses is not being improved by the time series history.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
@@ -87,3 +90,4 @@ A set of models were fitted using sliding windows of 80 hours on the input time 
 
 <img src="plots/pred-act-rf-ts-training-.png" width="420" height="280" /><img src="plots/pred-act-rf-ts-validation-.png" width="420" height="280" />
 <img src="plots/resid-rf-ts-training-.png" width="420" height="280" /><img src="plots/resid-rf-ts-validation-.png" width="420" height="280" />
+<img src="plots/pred-time-rf-ts-validation-2017-03-06-2017-03-09.png" width="480" height="240" /><img src="plots/pred-time-rf-ts-validation-2017-05-01-2017-05-15.png" width="480" height="240" />
