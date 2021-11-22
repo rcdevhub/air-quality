@@ -96,7 +96,7 @@ A random forest model was fitted, which should be able to better capture non-lin
 
 Several features were added in an attempt to improve model performance. Feature importance metrics showed that wind direction was more important than wind speed. This could be because Islington is located in North London and so north winds would be blowing clean air down, rather than polluted air carried by the prevailing south-west wind across London. A multiplicative interaction between wind speed and wind direction was introduced. Also, the time series window of 80 hours was not long enough to capture long-term trends. Chronological features were added, that is, hour of day, day of week, week of year and year. These were added as numerical variables.
 
-The baseline random forest model (non-time series) was the best performing model so far, and so this was taken forward for use with the new features. A new randomised search was performed, resulting in a model with 145 trees, with max features of 5 and a max depth of 39. Metrics and graphs are shown below. The new features appeared to slightly improve performance on the training set, but worsened it on the validation set.
+The baseline random forest model (non-time series) was the best performing model so far, and so this was taken forward for use with the new features. A new randomised search was performed, resulting in a model with 145 trees, with max features of 5 and a max depth of 39. Metrics and graphs are shown below. The new features appeared to slightly improve performance on the training set, but worsened it on the validation set, indicating overfitting.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
