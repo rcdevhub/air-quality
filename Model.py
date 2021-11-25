@@ -10,7 +10,7 @@ Created on Mon Nov 22 20:41:42 2021
 import torch
 from torch import nn
 
-from pytorch_forecasting.data import TimeSeriesDataset
+from pytorch_forecasting.data import TimeSeriesDataSet
 from pytorch_forecasting.models import BaseModel
 
 # Prepare dataset to use PyTorch TimeSeriesDataset
@@ -109,8 +109,8 @@ class FullyConnectedModel(BaseModel):
                                             n_hidden_layers=self.hparams.n_hidden_layers
                                             )
     
-    def forward(self, x: Dict[str,torch.Tensor]):
-        # x is a batch generated based on the TimeSeriesDataset
+    def forward(self, x: dict):
+        # x is a batch generated based on the TimeSeriesDataSet
         network_input = x['encoder_cont'].squeeze(-1)
         prediction = self.network(network_input).unsqueeze(-1)
         # rescale predictions into target space
@@ -119,7 +119,7 @@ class FullyConnectedModel(BaseModel):
         return self.to_network_output(prediction=prediction)
     
     @classmethod
-    def from_dataset(cls,dataset:TimeSeriesDataset,**kwargs):
+    def from_dataset(cls,dataset:TimeSeriesDataSet,**kwargs):
         new_kwargs={'output_size':dataset.max_prediction_length,
                     'input_size':dataset.max_encoder_length
                     }
@@ -127,16 +127,17 @@ class FullyConnectedModel(BaseModel):
         
         assert dataset.max_prediction_length == dataset.min_prediction_length, 'Decoder only supports a fixed length.'
         assert dataset.max_encoder_length == dataset.min_encoder_length, 'Encoder only supports a fixed length.'
-        assert (len(dataset.time_varying_known_categoricals)==0
-                and len(dataset.time_varying_known_reals)==0
-                and len(dataset.time_varying_unknown_categoricals)==0
-                and len(dataset.static_categoricals)==0
-                and len(dataset.static_reals)==0
-                and len(dataset.time_varying_unknown_reals)==1
-                and dataset.time_varying_unknown_reals[0]==dataset.target
-                ), 'Only covariate should be the target in time_varying_unknown_reals'
+        # assert (len(dataset.time_varying_known_categoricals)==0
+        #         and len(dataset.time_varying_known_reals)==0
+        #         and len(dataset.time_varying_unknown_categoricals)==0
+        #         and len(dataset.static_categoricals)==0
+        #         and len(dataset.static_reals)==0
+        #         and len(dataset.time_varying_unknown_reals)==1
+        #         and dataset.time_varying_unknown_reals[0]==dataset.target
+        #         ), 'Only covariate should be the target in time_varying_unknown_reals'
         
         return super().from_dataset(dataset, **new_kwargs)
     
 model = FullyConnectedModel.from_dataset(tsd, hidden_size=10, n_hidden_layers=2)
 model.summarize("full")
+model(X)['prediction']
