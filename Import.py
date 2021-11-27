@@ -497,6 +497,7 @@ for i in demo_dates_valid:
 # Note importance of recent readings and daily peaks at 24 and 48 hours
 # Note the confidence interval is there but nearly invisible
 plot_acf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
+plt.savefig(fname='plots/isl_acf.png',format='png',dpi=150)
 # plt.ylim([-0.25,0.25])
 
 # Plot PACF
@@ -504,6 +505,7 @@ plot_acf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
 # Again note these are all outside the invisible confidence interval
 # Subsequent peaks indicate that ARIMA model unlikely to be sufficient
 plot_pacf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
+plt.savefig(fname='plots/isl_pacf.png',format='png',dpi=150)
 # plt.ylim([-0.1,0.1])
 
 #--------------------------ARIMA------------------------------
