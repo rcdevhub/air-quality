@@ -38,7 +38,7 @@ As shown above, there are gaps in the pollution time series. The amount of missi
 
 ### Trends
 
-Seasonal trends are somwhat unclear from the data. Autocorrelation and partial autocorrelation plots on the target time series are shown below and indicate strong time-based correlations, with daily peaks at 24 and 48 hours.
+Seasonal trends were somewhat unclear from the data. Autocorrelation and partial autocorrelation plots on the target time series are shown below and indicate strong time-based correlations, with daily peaks at 24 and 48 hours.
 
 <img src="plots/isl_acf.png" width="420" height="280" /><img src="plots/isl_pacf.png" width="420" height="280" />
 
@@ -119,7 +119,7 @@ The baseline random forest model (non-time series) was the best performing model
 
 ### Time series model - Recurrent Neural Network
 
-It was investigated whether a recurrent neural network (RNN) model architecture could provide any performance improvement. Initially, a vanilla RNN was implemented on the window sequences, with 3 hidden layers of 32 neurons each. Model performance was observed to be best on the validation set after 36 epochs of training. Performance was better than the other time-based models, though still not quite as good as the baseline model.
+It was investigated whether a recurrent neural network (RNN) model architecture could provide any performance improvement. Initially, a vanilla RNN was implemented on the window sequences (without additional features), with 3 hidden layers of 32 neurons each. Model performance was observed to be best on the validation set after 36 epochs of training. Performance was better than the other time-based models, though still not quite as good as the baseline model.
 
 | Metric | Training | Validation |
 | :--- | ---:|---:|
