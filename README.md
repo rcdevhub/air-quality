@@ -36,6 +36,12 @@ As shown above, there are gaps in the pollution time series. The amount of missi
 |msl_pressure                                                   | 0.12|
 |air_temperature                                                | 0.08|
 
+### Trends
+
+Seasonal trends are somwhat unclear from the data. Autocorrelation and partial autocorrelation plots on the target time series are shown below and indicate strong time-based correlations, with daily peaks at 24 and 48 hours.
+
+<img src="plots/isl_acf.png" width="420" height="280" /><img src="plots/isl_pacf.png" width="420" height="280" />
+
 ### Train-test split
 
 It was decided to use the years [2010-2016] as training data, [2017-2018] as validation data,

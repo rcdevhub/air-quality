@@ -39,8 +39,6 @@ from statsmodels.graphics.tsaplots import (plot_acf, plot_pacf)
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 
-from pytorch_forecasting.data import TimeSeriesDataSet
-
 #--------------------------API functions----------------------------------
 
 def get_sites():
@@ -499,6 +497,7 @@ for i in demo_dates_valid:
 # Note importance of recent readings and daily peaks at 24 and 48 hours
 # Note the confidence interval is there but nearly invisible
 plot_acf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
+plt.savefig(fname='plots/isl_acf.png',format='png',dpi=150)
 # plt.ylim([-0.25,0.25])
 
 # Plot PACF
@@ -506,6 +505,7 @@ plot_acf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
 # Again note these are all outside the invisible confidence interval
 # Subsequent peaks indicate that ARIMA model unlikely to be sufficient
 plot_pacf(data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'])
+plt.savefig(fname='plots/isl_pacf.png',format='png',dpi=150)
 # plt.ylim([-0.1,0.1])
 
 #--------------------------ARIMA------------------------------
@@ -563,27 +563,6 @@ for i in demo_dates_train:
                    date_low=i[0],date_high=i[1],caption=i[2])
 
 #--------------------------Time Series Data Prep------------------------------
-
-# TO DO: Using PyTorch class
-# ts2 = data_train[['MeasurementDateGMT','Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']].copy()
-
-# ts2.reset_index(inplace=True)
-# ts2.rename(columns={'index':'time_idx'},inplace=True)
-# ts2['group'] = np.zeros(ts2.shape[0])
-
-# max_encoder_length = 80
-# max_prediction_length = 1
-
-# tsd = TimeSeriesDataSet(ts2,
-#                         time_idx='time_idx',
-#                         target='Islington - Holloway Road: Nitrogen Dioxide (ug/m3)',
-#                         group_ids=['group'],
-#                         allow_missing_timesteps=True,
-#                         max_encoder_length=max_encoder_length,
-#                         max_prediction_length=max_prediction_length
-#                         )
-
-# dataloader = tsd.to_dataloader(batch_size=len(tsd))
 
 # Prepare sliding window data from training features
 window_length = 80
