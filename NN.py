@@ -70,7 +70,7 @@ def train_model(dataloader,model,loss_function,optimizer):
     
     for X,y in dataloader:
         output = model(X)
-        loss = loss_function(output,y)
+        loss = loss_function(torch.squeeze(output),y)
         
         optimizer.zero_grad()
         loss.backward()
@@ -80,6 +80,7 @@ def train_model(dataloader,model,loss_function,optimizer):
         
     avg_loss = total_loss/num_batches
     print(f'Train loss: {avg_loss}')
+    return avg_loss
     
 def valid_model(dataloader,model,loss_function):
     
@@ -89,10 +90,11 @@ def valid_model(dataloader,model,loss_function):
     with torch.no_grad():
         for X,y in dataloader:
             output = model(X)
-            total_loss += loss_function(output,y).item()
+            total_loss += loss_function(torch.squeeze(output),y).item()
             
     avg_loss = total_loss/num_batches
     print(f'Validation loss: {avg_loss}')
+    return avg_loss
     
 def model_predict(dataloader,model):
     '''Predict from trained model.'''
@@ -119,14 +121,16 @@ X_valid2 = scaler.transform(X_valid2)
 data_nn_train = pd.DataFrame(X_train2,
                              columns=data_train.drop(['MeasurementDateGMT',
                                                       'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
-                                                     axis=1).columns)
-data_nn_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'] = data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']
+                                                     axis=1).columns,
+                             index=data_train.index)
+data_nn_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'] = data_train['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].copy()
 
 data_nn_valid = pd.DataFrame(X_valid2,
                              columns=data_valid.drop(['MeasurementDateGMT',
                                                       'Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'],
-                                                     axis=1).columns)
-data_nn_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'] = data_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)']
+                                                     axis=1).columns,
+                             index=data_valid.index)
+data_nn_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'] = data_valid['Islington - Holloway Road: Nitrogen Dioxide (ug/m3)'].copy()
 
 # Set up datasets
 sequence_length = 80
@@ -146,22 +150,67 @@ tsds_valid = SequenceDataset(data_nn_valid,
 # Convert to dataloader
 torch.manual_seed(456)
 
-train_loader = DataLoader(tsds_train,batch_size=36,shuffle=False)
+loader_train = DataLoader(tsds_train,batch_size=36,shuffle=True)
+loader_eval_train = DataLoader(tsds_train,batch_size=36,shuffle=False)
+loader_valid = DataLoader(tsds_valid,batch_size=36,shuffle=False)
 
-X,y = next(iter(train_loader))
+# X,y = next(iter(loader_train))
 
 # Define model
 
-num_hidden_units = 16
+num_hidden_units = 8
 num_features = tsds_train.num_feat()
 num_layers = 3
 learning_rate = 1e-3
+num_epochs = 5
 
 model = RNN_model(num_features,num_hidden_units,num_layers)
 
 loss_function = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
 
+# Train model
+train_losses = np.zeros(num_epochs)
+valid_losses = np.zeros(num_epochs)
+for i in range(num_epochs):
+    print(f'Epoch {i}')
+    train_losses[i] = train_model(loader_train,model,loss_function,optimizer)
+    valid_losses[i] = valid_model(loader_valid,model,loss_function)
 
+plt.figure()
+plt.plot(train_losses)
+plt.figure()
+plt.plot(valid_losses)
 
+# Get predictions
+pred_rnn_train = np.squeeze(model_predict(loader_eval_train,model).detach().numpy())
+pred_rnn_valid = np.squeeze(model_predict(loader_valid,model).detach().numpy())
+resid_rnn_train = Y_train - pred_rnn_train
+resid_rnn_valid = Y_valid - pred_rnn_valid
+# Compute metrics
+pred_rnn_metrics_train = compute_reg_metrics(Y_train,pred_rnn_train)
+pred_rnn_metrics_valid = compute_reg_metrics(Y_valid,pred_rnn_valid)
+pred_rnn_metrics_train['resid'] = pd.DataFrame(resid_rnn_train).describe()
+pred_rnn_metrics_valid['resid'] = pd.DataFrame(resid_rnn_valid).describe()
 
+# Save results
+# with open('output/pred_rnn_metrics_train.pkl','wb') as f:
+#     pickle.dump(pred_rnn_metrics_train,f)
+# with open('output/pred_rnn_metrics_valid.pkl','wb') as f:
+#     pickle.dump(pred_rnn_metrics_valid,f)
+
+plot_resid(resid_rnn_train,'training','rnn')
+plot_resid(resid_rnn_valid,'validation','rnn')
+plot_resid_box(resid_rnn_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
+plot_pred_vs_act(Y_train, pred_rnn_train, 200, datatype='training', label='rnn', x_low=0, x_high=100, y_low=0, y_high=100)
+plot_pred_vs_act(Y_valid, pred_rnn_valid, 200, datatype='validation', label='rnn', x_low=0, x_high=100, y_low=0, y_high=100)
+# Plot predictions
+for i in demo_dates_train:
+    plot_pred_time(data_train['MeasurementDateGMT'],Y_train,pred_rnn_train,
+                   datatype='training',label='rnn',
+               date_low=i[0],date_high=i[1],caption=i[2])
+    
+for i in demo_dates_valid:
+    plot_pred_time(data_valid['MeasurementDateGMT'],Y_valid,pred_rnn_valid,
+                   datatype='validation',label='rnn',
+               date_low=i[0],date_high=i[1],caption=i[2])
