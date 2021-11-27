@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+Air pollution data import and model build
+
 Created on Tue Nov  9 22:53:53 2021
 
 @author: rcpc4
@@ -17,6 +19,7 @@ import json
 import pickle
 import requests
 import copy
+import time
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt

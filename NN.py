@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 """
+RNN model in PyTorch for pollution sequence
+
 Created on Fri Nov 26 08:17:40 2021
 
 @author: rcpc4
@@ -158,11 +160,11 @@ loader_valid = DataLoader(tsds_valid,batch_size=36,shuffle=False)
 
 # Define model
 
-num_hidden_units = 8
+num_hidden_units = 32
 num_features = tsds_train.num_feat()
 num_layers = 3
 learning_rate = 1e-3
-num_epochs = 5
+num_epochs = 36
 
 model = RNN_model(num_features,num_hidden_units,num_layers)
 
@@ -181,6 +183,7 @@ plt.figure()
 plt.plot(train_losses)
 plt.figure()
 plt.plot(valid_losses)
+print('argminloss',np.argmin(valid_losses))
 
 # Get predictions
 pred_rnn_train = np.squeeze(model_predict(loader_eval_train,model).detach().numpy())
@@ -193,12 +196,18 @@ pred_rnn_metrics_valid = compute_reg_metrics(Y_valid,pred_rnn_valid)
 pred_rnn_metrics_train['resid'] = pd.DataFrame(resid_rnn_train).describe()
 pred_rnn_metrics_valid['resid'] = pd.DataFrame(resid_rnn_valid).describe()
 
-# Save results
+# Save model
+# timestamp = time.strftime('-%Y-%m-%d-%H-%M',time.localtime())
+# torch.save(model,'output/rnn_model'+timestamp)
+# torch.save(model.state_dict(),'output/rnn_model_params'+timestamp)
+
+# # Save results
 # with open('output/pred_rnn_metrics_train.pkl','wb') as f:
 #     pickle.dump(pred_rnn_metrics_train,f)
 # with open('output/pred_rnn_metrics_valid.pkl','wb') as f:
 #     pickle.dump(pred_rnn_metrics_valid,f)
 
+# Plot diagnostics
 plot_resid(resid_rnn_train,'training','rnn')
 plot_resid(resid_rnn_valid,'validation','rnn')
 plot_resid_box(resid_rnn_train,pd.DatetimeIndex(data_train['MeasurementDateGMT']).year)
