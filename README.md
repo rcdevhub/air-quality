@@ -116,3 +116,20 @@ The baseline random forest model (non-time series) was the best performing model
 <img src="plots/pred-act-reg-feat-training-.png" width="420" height="280" /><img src="plots/pred-act-reg-feat-validation-.png" width="420" height="280" />
 <img src="plots/resid-reg-feat-training-.png" width="420" height="280" /><img src="plots/resid-reg-feat-validation-.png" width="420" height="280" />
 <img src="plots/pred-time-reg-feat-validation-2017-03-06-2017-03-09.png" width="480" height="240" /><img src="plots/pred-time-reg-feat-validation-2017-05-01-2017-05-15.png" width="480" height="240" />
+
+### Time series model - Recurrent Neural Network
+
+It was investigated whether a recurrent neural network (RNN) model architecture could provide any performance improvement. Initially, a vanilla RNN was implemented on the window sequences, with 3 hidden layers of 32 neurons each. Model performance was observed to be best on the validation set after 36 epochs of training. Performance was better than the other time-based models, though still not quite as good as the baseline model.
+
+| Metric | Training | Validation |
+| :--- | ---:|---:|
+| Mean Absolute Error |10.66 |9.28|
+| Mean Squared Error |202.08 |139.81|
+| Root Mean Squared Error |14.22 |11.82|
+| Residual Mean |0.64 |-3.60 |
+| Residual Median |-0.48 |-4.28 |
+| Residual Standard Deviation |14.20 |11.26|
+
+<img src="plots/pred-act-rnn-training-.png" width="420" height="280" /><img src="plots/pred-act-rnn-validation-.png" width="420" height="280" />
+<img src="plots/resid-rnn-training-.png" width="420" height="280" /><img src="plots/resid-rnn-validation-.png" width="420" height="280" />
+<img src="plots/pred-time-rnn-validation-2017-03-06-2017-03-09.png" width="480" height="240" /><img src="plots/pred-time-rnn-validation-2017-05-01-2017-05-15.png" width="480" height="240" />
