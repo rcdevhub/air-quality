@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 """
+TimeSeriesDataSet in PyTorch-forecasting extension
+
 Created on Mon Nov 22 20:41:42 2021
 
 @author: rcpc4
 """
 
-# Unused
+# Unused, relies on third-party library
 
 # Imports
 
